@@ -27,10 +27,10 @@ async def async_setup_entry(hass, entry):
     return True
 
 async def async_unload_entry(hass, entry):
-    controller = hass.data[DOMAIN][entry.entry_id]["controller"]
-    if controller._remove_listener:
-        controller._remove_listener()
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        hass.data[DOMAIN].pop(entry.entry_id)
+        entry_data = hass.data[DOMAIN].pop(entry.entry_id, {})
+        controller = entry_data.get("controller")
+        if controller and controller._remove_listener:
+            controller._remove_listener()
     return unloaded

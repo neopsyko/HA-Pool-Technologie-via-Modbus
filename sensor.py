@@ -1,13 +1,12 @@
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.restore_state import RestoreEntity
-from .modbus_handler import ModbusHandler
 from .const import DOMAIN
 from .models import MODELS
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     data = hass.data[DOMAIN][config_entry.entry_id]
     model_key = data["model"]
-    handler = ModbusHandler(data["host"], data["port"], data["unit_id"])
+    handler = data["controller"].handler
 
     sensors = []
     for sensor_conf in MODELS[model_key]["sensors"]:

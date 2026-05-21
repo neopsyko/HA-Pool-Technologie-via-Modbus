@@ -33,6 +33,7 @@ class ORPSetpointEntity(NumberEntity):
         self._attr_native_unit_of_measurement = UnitOfElectricPotential.MILLIVOLT
         self._attr_mode = "box"
         self._attr_native_value = 650
+        self._attr_should_poll = False
 
     @property
     def native_min_value(self):
@@ -59,6 +60,7 @@ class ORPSetpointEntity(NumberEntity):
         result = await self._hass.async_add_executor_job(self._handler.read_register, self._address)
         if result:
             self._attr_native_value = int(result[0])
+            self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
         ok = await self._hass.async_add_executor_job(
@@ -85,6 +87,7 @@ class PHSetpointEntity(NumberEntity):
         self._attr_native_unit_of_measurement = "pH"
         self._attr_mode = "box"
         self._attr_native_value = 7.2
+        self._attr_should_poll = False
 
     @property
     def native_min_value(self):
@@ -111,6 +114,7 @@ class PHSetpointEntity(NumberEntity):
         result = await self._hass.async_add_executor_job(self._handler.read_register, self._address)
         if result:
             self._attr_native_value = round(result[0] * self._scale, 2)
+            self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
         raw = int(round(value / self._scale))

@@ -1,7 +1,7 @@
 from homeassistant.components.number import NumberEntity
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.const import UnitOfElectricPotential
-import asyncio
+from homeassistant.exceptions import HomeAssistantError
 
 from .models import MODELS
 from .const import DOMAIN
@@ -61,9 +61,12 @@ class ORPSetpointEntity(NumberEntity):
             self._attr_native_value = int(result[0])
 
     async def async_set_native_value(self, value: float) -> None:
+        ok = await self._hass.async_add_executor_job(
+            self._handler.write_register, self._address, int(value)
+        )
+        if not ok:
+            raise HomeAssistantError("Échec de l'écriture Modbus (ORP)")
         self._attr_native_value = int(value)
-        self._handler.write_register(self._address, int(value))
-        await asyncio.sleep(0.5)
 
 class PHSetpointEntity(NumberEntity):
     def __init__(self, hass, handler, entry_id, model_label):
@@ -111,7 +114,10 @@ class PHSetpointEntity(NumberEntity):
             self._attr_native_value = round(raw * self._scale, 2)
 
     async def async_set_native_value(self, value: float) -> None:
-        self._attr_native_value = value
         raw = int(round(value / self._scale))
-        self._handler.write_register(self._address, raw)
-        await asyncio.sleep(0.5)
+        ok = await self._hass.async_add_executor_job(
+            self._handler.write_register, self._address, raw
+        )
+        if not ok:
+            raise HomeAssistantError("Échec de l'écriture Modbus (pH)")
+        self._attr_native_value = value

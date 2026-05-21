@@ -26,9 +26,16 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async def update_sensors(now):
         if controller.should_skip_poll():
             return
+        any_success = False
         for sensor in sensors:
-            sensor.update()
+            ok = await hass.async_add_executor_job(sensor.update)
+            if ok:
+                any_success = True
             sensor.async_write_ha_state()
+        if any_success:
+            controller.notify_modbus_success()
+        else:
+            controller.notify_modbus_failure()
 
     controller._update_callback = update_sensors
 
@@ -45,8 +52,8 @@ class PoolSensor(SensorEntity, RestoreEntity):
         self._attr_has_entity_name = True
         self._attr_icon = config.get("icon", "mdi:water")
         self._attr_native_unit_of_measurement = config.get("unit", "")
-        self._attr_unique_id = config["unique_id"]
-        self._attr_should_poll = True
+        self._attr_unique_id = f"{entry_id}_{config['unique_id']}"
+        self._attr_should_poll = False
 
         self._attr_device_class = config.get("device_class")
 
@@ -71,12 +78,11 @@ class PoolSensor(SensorEntity, RestoreEntity):
             except ValueError:
                 pass
                 
-    def update(self):
-        controller = self.hass.data[DOMAIN][self._entry_id]["controller"]
+    def update(self) -> bool:
         result = self._handler.read_register(self._config["address"])
-
         if result:
             self._state = round(result[0] * self._config.get("scale", 1), self._config.get("precision", 0))
-            controller.notify_modbus_success()
-        else:
-            controller.notify_modbus_failure()
+            self._attr_available = True
+            return True
+        self._attr_available = False
+        return False

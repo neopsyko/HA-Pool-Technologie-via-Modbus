@@ -3,7 +3,6 @@ from homeassistant.const import EntityCategory
 from .const import DOMAIN
 from .models import MODELS
 
-FAILURE_THRESHOLD = 5 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     controller = hass.data[DOMAIN][config_entry.entry_id]["controller"]

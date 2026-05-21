@@ -4,17 +4,20 @@ Ce fichier fournit des indications à Claude Code (claude.ai/code) lors du trava
 
 ## Description
 
-Intégration Home Assistant personnalisée (`domain: pool_technologie`) pour les électrolyseurs Pool Technologie (ex. Ibiza iBasel Duo, WaterAir Salt Gold Duo) connectés via Modbus TCP/IP. L'installation se fait en copiant le dossier dans `config/custom_components/pool_technologie/` de l'instance HA.
+Intégration Home Assistant personnalisée (`domain: pool_technologie`) pour les électrolyseurs Pool Technologie (ex. Ibiza iBasel Duo, WaterAir Salt Gold Duo, Just Salt Pro) connectés via Modbus TCP/IP. L'installation se fait via HACS (dépôt personnalisé) ou en copiant le dossier dans `config/custom_components/pool_technologie/` de l'instance HA.
 
 ## Installation pour le développement / les tests
 
 Aucun build, suite de tests ni linter n'est configuré. Workflow de développement :
 
-1. Copier le dossier de l'intégration dans `config/custom_components/pool_technologie/` sur une instance Home Assistant.
+1. Copier les fichiers de l'intégration dans `config/custom_components/pool_technologie/` sur une instance Home Assistant.
 2. Redémarrer Home Assistant.
 3. Ajouter l'intégration via **Paramètres > Appareils & services > Ajouter une intégration > Pool Technologie**.
 
 Dépendance : `pymodbus>=3.9.2` (déclarée dans `manifest.json`, installée automatiquement par HA).
+
+**Installation via HACS (utilisateur final) :**
+HACS > ⋮ > Dépôts personnalisés → ajouter l'URL du dépôt, catégorie *Intégration*. Le `hacs.json` à la racine avec `content_in_root: true` indique à HACS que les fichiers ne sont pas dans un sous-dossier `custom_components/`.
 
 ## Architecture
 
@@ -22,7 +25,8 @@ L'intégration suit la structure standard des custom components HA :
 
 - **`models.py`** — source de données centrale : associe les clés de modèle (ex. `ibasel_duo`) à leurs définitions de capteurs (adresse de registre Modbus, facteur d'échelle, unité, précision). Ajouter un nouveau modèle d'appareil se fait ici.
 - **`modbus_handler.py`** — fine couche synchrone autour de `pymodbus.ModbusTcpClient`. Ouvre et ferme la connexion TCP à chaque lecture/écriture.
-- **`controller.py`** — gère la boucle de polling HA via `async_track_time_interval`. Compte les échecs Modbus consécutifs et passe `modbus_ok` à `False` après 5 échecs.
+- **`controller.py`** — gère la boucle de polling HA via `async_track_time_interval`. Compte les échecs Modbus consécutifs et passe `modbus_ok` à `False` après 5 échecs. `should_skip_poll()` bloque les lectures quand l'appareil est déconnecté (sonde de reconnexion toutes les `_PROBE_INTERVAL` = 5 itérations).
+- **`hacs.json`** — métadonnées HACS. `content_in_root: true` car les fichiers sont à la racine du dépôt.
 - **`__init__.py`** — setup de l'entrée : instancie `ModbusHandler` et `PoolController`, les stocke dans `hass.data[DOMAIN][entry_id]`, délègue le setup aux trois plateformes.
 - **`sensor.py`** — capteurs en lecture seule. `PoolSensor.update()` est synchrone et appelé depuis le callback de polling du controller. La valeur brute du registre est multipliée par `scale` et arrondie à `precision`.
 - **`number.py`** — consignes modifiables pour le pH (registre 4207, échelle `0.000390625`) et l'ORP (registre 4235, échelle 1 mV). Chemin d'écriture : `async_set_native_value` → `handler.write_register`.
@@ -36,6 +40,7 @@ L'intégration suit la structure standard des custom components HA :
 - Mise à l'échelle des capteurs : `valeur_brute * scale`, arrondie à `precision` décimales. La consigne pH utilise une échelle particulière (`0.000390625 ≈ 1/2560`) qui doit être inversée à l'écriture : `raw = round(valeur / scale)`.
 - `SCAN_INTERVAL = 60` secondes (défini dans `const.py`).
 - Le `_update_callback` du controller est initialisé à un lambda no-op à la construction, puis remplacé par `sensor.py` dans `async_setup_entry` une fois les entités créées.
+- Gestion de la déconnexion : après `_modbus_fail_threshold` (5) échecs consécutifs, `should_skip_poll()` retourne `True` et bloque les lectures. Une sonde est autorisée toutes les `_PROBE_INTERVAL` (5) itérations. Un succès remet `_modbus_fail_count` et `_probe_counter` à zéro.
 
 ## Ajouter un nouveau modèle
 

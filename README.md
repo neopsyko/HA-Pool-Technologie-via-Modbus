@@ -1,6 +1,6 @@
 # Pool Technologie – Intégration Home Assistant
 
-Intégration personnalisée Home Assistant pour les électrolyseurs de la marque Pool Technologie (testé et validé avec l’Ibiza iBasel Duo) via Modbus TCP.
+Intégration personnalisée Home Assistant pour les électrolyseurs de la marque Pool Technologie (Ibiza iBasel Duo, WaterAir Salt Gold Duo, Just Salt Pro) via Modbus TCP.
 
 ## Fonctionnalité
 
@@ -22,23 +22,32 @@ Exemple : [Waveshare Industrial Serial Server RS485 to RJ45 Ethernet TCP/IP to S
 
 ## Compatibilité
 
-Testé avec les modèles d'électrolyseurs suivants : 
+Testé avec les modèles d'électrolyseurs suivants :
 
 - [X]  Ibiza iBasel Duo
 - [X]  WaterAir Salt Gold Duo
+- [X]  Just Salt Pro
 
-Il est toutefois fort probable que cela fonctionne également avec d'autres modèles Pool Technologie. 
+Il est toutefois fort probable que cela fonctionne également avec d'autres modèles Pool Technologie.
 
 ## Installation
 
+### Via HACS (recommandé)
+
+1. Dans HACS, cliquez sur ⋮ > **Dépôts personnalisés**
+2. Ajoutez l’URL de ce dépôt, catégorie **Intégration**
+3. Installez **Pool Technologie** depuis HACS
+4. Redémarrez Home Assistant
+5. Ajoutez l’intégration via **Paramètres** > **Appareils & services** > **Ajouter une intégration** > **Pool Technologie**
+
+### Manuellement
+
 - [Télécharger la dernière version](../../releases/latest)
-- Décompressez l’archive .zip.
-- Renommez le dossier extrait en **pool_technologie** s'il ne l'est déjà pas
+- Décompressez l’archive .zip
+- Renommez le dossier extrait en **pool_technologie** s’il ne l’est déjà pas
 - Copiez le dossier **pool_technologie** dans **config/custom_components/**
-- Redémarrer Home Assistant
-- Ajouter l'intégration via **Paramètres** > **Appareils & services** > **Ajouter une intégration**.
-- Recherchez **Pool Technologie**.
-- Suivre les indications de configuration.
+- Redémarrez Home Assistant
+- Ajoutez l’intégration via **Paramètres** > **Appareils & services** > **Ajouter une intégration** > **Pool Technologie**
 
 ## Aperçu
 

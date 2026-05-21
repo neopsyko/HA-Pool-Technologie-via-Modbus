@@ -31,8 +31,12 @@ class PoolController:
     def _start_polling(self):
         if self._remove_listener:
             self._remove_listener()
+
+        async def _dispatch(now):
+            await self._update_callback(now)
+
         self._remove_listener = async_track_time_interval(
-            self._hass, lambda now: self._update_callback(now), timedelta(seconds=self._scan_interval)
+            self._hass, _dispatch, timedelta(seconds=self._scan_interval)
         )
 
     async def update_interval(self, new_interval):

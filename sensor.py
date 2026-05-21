@@ -24,6 +24,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     controller = hass.data[DOMAIN][config_entry.entry_id]["controller"]
 
     async def update_sensors(now):
+        if controller.should_skip_poll():
+            return
         for sensor in sensors:
             sensor.update()
             sensor.async_write_ha_state()

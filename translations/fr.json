@@ -10,6 +10,16 @@
           "unit_id": "Adresse Modbus",
           "model": "Modèle de l’électrolyseur"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigurer l’électrolyseur Pool Technologie",
+        "description": "Modifiez les informations de connexion à votre serveur Modbus TCP/IP.",
+        "data": {
+          "host": "Adresse IP",
+          "port": "Port TCP",
+          "unit_id": "Adresse Modbus",
+          "model": "Modèle de l’électrolyseur"
+        }
       }
     },
     "error": {

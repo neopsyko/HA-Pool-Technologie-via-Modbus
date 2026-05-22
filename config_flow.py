@@ -32,6 +32,32 @@ class PoolTechnologieConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(step_id="user", data_schema=schema)
 
+    async def async_step_reconfigure(self, user_input=None):
+        entry = self._get_reconfigure_entry()
+        if user_input is not None:
+            model_name = MODELS[user_input[CONF_MODEL]]["name"]
+            return self.async_update_reload_and_abort(
+                entry,
+                title=model_name,
+                data={
+                    CONF_HOST: user_input[CONF_HOST],
+                    CONF_PORT: user_input[CONF_PORT],
+                    CONF_UNIT_ID: user_input[CONF_UNIT_ID],
+                    CONF_MODEL: user_input[CONF_MODEL],
+                },
+            )
+
+        schema = vol.Schema({
+            vol.Required(CONF_HOST, default=entry.data.get(CONF_HOST, "")): str,
+            vol.Required(CONF_PORT, default=entry.data.get(CONF_PORT, 502)): int,
+            vol.Required(CONF_UNIT_ID, default=entry.data.get(CONF_UNIT_ID, 1)): int,
+            vol.Required(CONF_MODEL, default=entry.data.get(CONF_MODEL)): vol.In(
+                {k: v["name"] for k, v in MODELS.items()}
+            ),
+        })
+
+        return self.async_show_form(step_id="reconfigure", data_schema=schema)
+
     @staticmethod
     def async_get_options_flow(config_entry):
         return PoolTechnologieOptionsFlow()

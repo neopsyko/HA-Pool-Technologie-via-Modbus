@@ -21,6 +21,9 @@ class PoolController:
     def add_state_listener(self, callback):
         self._state_listeners.append(callback)
 
+    def remove_state_listener(self, callback):
+        self._state_listeners = [cb for cb in self._state_listeners if cb is not callback]
+
     def _notify_state_change(self):
         for cb in self._state_listeners:
             cb()

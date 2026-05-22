@@ -27,6 +27,7 @@ class ModbusStatusSensor(BinarySensorEntity):
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:lan-connect"
         self._attr_is_on = controller.modbus_ok
+        self._on_modbus_change = None
 
     @property
     def is_on(self):
@@ -42,7 +43,22 @@ class ModbusStatusSensor(BinarySensorEntity):
         }
 
     async def async_added_to_hass(self):
-        self._controller.add_state_listener(self.async_write_ha_state)
+        def _on_modbus_change():
+            if self._filtration_entity:
+                state = self.hass.states.get(self._filtration_entity)
+                if state is None or state.state != "on":
+                    self._attr_is_on = False
+                    self.async_write_ha_state()
+                    return
+            self._attr_is_on = self._controller.modbus_ok
+            self.async_write_ha_state()
+
+        self._on_modbus_change = _on_modbus_change
+        self._controller.add_state_listener(self._on_modbus_change)
+
+    async def async_will_remove_from_hass(self):
+        if self._on_modbus_change is not None:
+            self._controller.remove_state_listener(self._on_modbus_change)
 
     async def async_update(self):
         if self._filtration_entity:

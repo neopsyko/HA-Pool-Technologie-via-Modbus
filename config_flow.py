@@ -40,6 +40,7 @@ class PoolTechnologieConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 entry,
                 title=model_name,
                 data={
+                    **entry.data,
                     CONF_HOST: user_input[CONF_HOST],
                     CONF_PORT: user_input[CONF_PORT],
                     CONF_UNIT_ID: user_input[CONF_UNIT_ID],
@@ -71,6 +72,7 @@ class PoolTechnologieOptionsFlow(config_entries.OptionsFlow):
                 entry,
                 title=MODELS[user_input[CONF_MODEL]]["name"],
                 data={
+                    **entry.data,
                     CONF_HOST: user_input[CONF_HOST],
                     CONF_PORT: user_input[CONF_PORT],
                     CONF_UNIT_ID: user_input[CONF_UNIT_ID],

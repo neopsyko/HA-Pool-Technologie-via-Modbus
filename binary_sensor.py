@@ -41,6 +41,9 @@ class ModbusStatusSensor(BinarySensorEntity):
             "model": self._model_label,
         }
 
+    async def async_added_to_hass(self):
+        self._controller.add_state_listener(self.async_write_ha_state)
+
     async def async_update(self):
         if self._filtration_entity:
             state = self.hass.states.get(self._filtration_entity)

@@ -16,6 +16,14 @@ class PoolController:
         self._modbus_fail_count = 0
         self._modbus_fail_threshold = 5
         self._probe_counter = 0
+        self._state_listeners = []
+
+    def add_state_listener(self, callback):
+        self._state_listeners.append(callback)
+
+    def _notify_state_change(self):
+        for cb in self._state_listeners:
+            cb()
 
     @property
     def scan_interval(self):
@@ -44,14 +52,20 @@ class PoolController:
         self._start_polling()
 
     def notify_modbus_success(self):
+        changed = not self.modbus_ok
         self._modbus_fail_count = 0
         self._probe_counter = 0
         self.modbus_ok = True
+        if changed:
+            self._notify_state_change()
 
     def notify_modbus_failure(self):
         self._modbus_fail_count += 1
+        was_ok = self.modbus_ok
         if self._modbus_fail_count >= self._modbus_fail_threshold:
             self.modbus_ok = False
+        if was_ok and not self.modbus_ok:
+            self._notify_state_change()
 
     def should_skip_poll(self) -> bool:
         """Retourne True si le poll doit être sauté (Modbus déconnecté).

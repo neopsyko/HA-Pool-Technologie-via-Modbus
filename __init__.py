@@ -14,7 +14,8 @@ async def async_setup_entry(hass, entry):
     unit_id = data["unit_id"]
     handler = ModbusHandler(host, port, unit_id)
 
-    controller = PoolController(hass, lambda now: None, SCAN_INTERVAL, handler)
+    async def _noop(now): pass
+    controller = PoolController(hass, _noop, SCAN_INTERVAL, handler)
 
     hass.data[DOMAIN][entry.entry_id] = {
         **data,

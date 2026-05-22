@@ -77,7 +77,9 @@ class PoolTechnologieOptionsFlow(config_entries.OptionsFlow):
                     CONF_MODEL: user_input[CONF_MODEL],
                 },
             )
-            await self.hass.config_entries.async_reload(entry.entry_id)
+            self.hass.async_create_task(
+                self.hass.config_entries.async_reload(entry.entry_id)
+            )
             return self.async_create_entry(title="", data={})
 
         schema = vol.Schema({

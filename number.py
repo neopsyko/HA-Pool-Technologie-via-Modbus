@@ -58,9 +58,11 @@ class ORPSetpointEntity(NumberEntity):
 
     async def async_added_to_hass(self):
         result = await self._hass.async_add_executor_job(self._handler.read_register, self._address)
-        if result:
-            self._attr_native_value = int(result[0])
-            self.async_write_ha_state()
+        if result is not None:
+            v = int(result[0])
+            if self.native_min_value <= v <= self.native_max_value:
+                self._attr_native_value = v
+                self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
         ok = await self._hass.async_add_executor_job(
@@ -113,9 +115,11 @@ class PHSetpointEntity(NumberEntity):
 
     async def async_added_to_hass(self):
         result = await self._hass.async_add_executor_job(self._handler.read_register, self._address)
-        if result:
-            self._attr_native_value = round(result[0] * self._scale, 2)
-            self.async_write_ha_state()
+        if result is not None:
+            v = round(result[0] * self._scale, 2)
+            if self.native_min_value <= v <= self.native_max_value:
+                self._attr_native_value = v
+                self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
         raw = int(round(value / self._scale))

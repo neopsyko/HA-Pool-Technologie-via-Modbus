@@ -30,6 +30,20 @@
       "already_configured": "Cet électrolyseur est déjà configuré"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Reconfigurer l'électrolyseur Pool Technologie",
+        "description": "Modifiez les informations de connexion à votre serveur Modbus TCP/IP.",
+        "data": {
+          "host": "Adresse IP",
+          "port": "Port TCP",
+          "unit_id": "Adresse Modbus",
+          "model": "Modèle de l'électrolyseur"
+        }
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "taille_bassin": {

@@ -79,7 +79,7 @@ class PoolSensor(SensorEntity, RestoreEntity):
                 
     def update(self) -> bool:
         result = self._handler.read_register(self._config["address"])
-        if result:
+        if result is not None:
             self._state = round(result[0] * self._config.get("scale", 1), self._config.get("precision", 0))
             self._attr_available = True
             return True

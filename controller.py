@@ -52,6 +52,8 @@ class PoolController:
 
     async def update_interval(self, new_interval):
         self._scan_interval = new_interval
+        self._modbus_fail_count = 0
+        self._probe_counter = 0
         self._start_polling()
 
     def notify_modbus_success(self):

@@ -34,7 +34,7 @@ class PoolTechnologieConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     def async_get_options_flow(config_entry):
-        return PoolTechnologieOptionsFlow(config_entry)
+        return PoolTechnologieOptionsFlow()
 
 
 class PoolTechnologieOptionsFlow(config_entries.OptionsFlow):

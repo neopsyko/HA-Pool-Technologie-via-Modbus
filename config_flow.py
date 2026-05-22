@@ -39,10 +39,6 @@ class PoolTechnologieConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(self, user_input=None):
         entry = self._get_reconfigure_entry()
         if user_input is not None:
-            await self.async_set_unique_id(
-                f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}:{user_input[CONF_UNIT_ID]}"
-            )
-            self._abort_if_unique_id_configured()
             model_name = MODELS[user_input[CONF_MODEL]]["name"]
             return self.async_update_reload_and_abort(
                 entry,

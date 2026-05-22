@@ -69,6 +69,7 @@ class ORPSetpointEntity(NumberEntity):
         if not ok:
             raise HomeAssistantError("Échec de l'écriture Modbus (ORP)")
         self._attr_native_value = int(value)
+        self.async_write_ha_state()
 
 class PHSetpointEntity(NumberEntity):
     def __init__(self, hass, handler, entry_id, model_label):
@@ -124,3 +125,4 @@ class PHSetpointEntity(NumberEntity):
         if not ok:
             raise HomeAssistantError("Échec de l'écriture Modbus (pH)")
         self._attr_native_value = value
+        self.async_write_ha_state()

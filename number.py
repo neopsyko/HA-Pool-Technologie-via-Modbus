@@ -24,6 +24,7 @@ class ORPSetpointEntity(NumberEntity):
         self._entry_id = entry_id
         self._model_label = model_label
         self._address = 4235
+        self._controller = None
 
         self._attr_translation_key = "consigne_orp"
         self._attr_has_entity_name = True
@@ -63,6 +64,20 @@ class ORPSetpointEntity(NumberEntity):
             if self.native_min_value <= v <= self.native_max_value:
                 self._attr_native_value = v
                 self.async_write_ha_state()
+        self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
+        self._controller.add_poll_listener(self._async_poll_refresh)
+
+    async def async_will_remove_from_hass(self):
+        if self._controller:
+            self._controller.remove_poll_listener(self._async_poll_refresh)
+
+    async def _async_poll_refresh(self):
+        result = await self._hass.async_add_executor_job(self._handler.read_register, self._address)
+        if result is not None:
+            v = int(result[0])
+            if self.native_min_value <= v <= self.native_max_value and v != self._attr_native_value:
+                self._attr_native_value = v
+                self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
         ok = await self._hass.async_add_executor_job(
@@ -81,6 +96,7 @@ class PHSetpointEntity(NumberEntity):
         self._model_label = model_label
         self._address = 4207
         self._scale = 0.000390625
+        self._controller = None
 
         self._attr_translation_key = "consigne_ph"
         self._attr_has_entity_name = True
@@ -118,6 +134,20 @@ class PHSetpointEntity(NumberEntity):
         if result is not None:
             v = round(result[0] * self._scale, 2)
             if self.native_min_value <= v <= self.native_max_value:
+                self._attr_native_value = v
+                self.async_write_ha_state()
+        self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
+        self._controller.add_poll_listener(self._async_poll_refresh)
+
+    async def async_will_remove_from_hass(self):
+        if self._controller:
+            self._controller.remove_poll_listener(self._async_poll_refresh)
+
+    async def _async_poll_refresh(self):
+        result = await self._hass.async_add_executor_job(self._handler.read_register, self._address)
+        if result is not None:
+            v = round(result[0] * self._scale, 2)
+            if self.native_min_value <= v <= self.native_max_value and v != self._attr_native_value:
                 self._attr_native_value = v
                 self.async_write_ha_state()
 

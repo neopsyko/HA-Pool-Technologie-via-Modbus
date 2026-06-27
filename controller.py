@@ -17,12 +17,19 @@ class PoolController:
         self._modbus_fail_threshold = 5
         self._probe_counter = 0
         self._state_listeners = []
+        self._poll_listeners = []
 
     def add_state_listener(self, callback):
         self._state_listeners.append(callback)
 
     def remove_state_listener(self, callback):
         self._state_listeners = [cb for cb in self._state_listeners if cb is not callback]
+
+    def add_poll_listener(self, callback):
+        self._poll_listeners.append(callback)
+
+    def remove_poll_listener(self, callback):
+        self._poll_listeners = [cb for cb in self._poll_listeners if cb is not callback]
 
     def _notify_state_change(self):
         for cb in self._state_listeners:

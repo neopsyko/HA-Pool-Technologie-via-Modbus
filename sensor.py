@@ -35,6 +35,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             controller.notify_modbus_success()
         else:
             controller.notify_modbus_failure()
+        for cb in list(controller._poll_listeners):
+            await cb()
 
     controller._update_callback = update_sensors
 

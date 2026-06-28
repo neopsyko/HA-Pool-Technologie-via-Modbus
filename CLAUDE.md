@@ -32,6 +32,7 @@ L'intégration suit la structure standard des custom components HA :
 - **`number.py`** — consignes modifiables pour le pH (registre 4207, échelle `0.000390625`) et l'ORP (registre 4235, échelle 1 mV). Lecture initiale au démarrage via `async_add_executor_job` avec validation min/max. Chemin d'écriture : `async_set_native_value` → `async_add_executor_job(handler.write_register)` → `async_write_ha_state()`.
 - **`binary_sensor.py`** — `ModbusStatusSensor` reflète `controller.modbus_ok`. S'enregistre comme observateur via `controller.add_state_listener` pour se mettre à jour en temps réel. Vérifie optionnellement l'état d'une entité de filtration avant de reporter l'état OK. Le listener est retiré proprement dans `async_will_remove_from_hass`.
 - **`config_flow.py`** — trois flux : `async_step_user` (création, avec déduplication par `unique_id = host:port:unit_id`), `async_step_reconfigure` (modification d'une entrée existante), `PoolTechnologieOptionsFlow.async_step_init` (options, même formulaire que reconfigure).
+- **`switch.py`** — `BoostSwitch` pour le mode boost. Activation en deux temps : écriture de la durée (reg 4188 = 1440 min = 24h) puis du flag (reg 4182 = 256). Désactivation : écriture 0 dans 4188 (4182 se remet à 0 automatiquement côté device). Se rafraîchit via `controller.add_poll_listener` comme les entités `number`.
 - **`translations/fr.json`** — chaînes UI en français pour le flux de configuration et les noms d'entités.
 
 ## Conventions importantes
@@ -44,6 +45,55 @@ L'intégration suit la structure standard des custom components HA :
 - `unique_id` des entités capteurs préfixé par `entry_id` (`f"{entry_id}_{config['unique_id']}"`) pour éviter les collisions entre instances.
 - Déduplication des config entries : `async_step_user` appelle `async_set_unique_id(f"{host}:{port}:{unit_id}")` + `_abort_if_unique_id_configured()`. Ne pas appeler `_abort_if_unique_id_configured()` dans `async_step_reconfigure` — cela bloquerait la reconfiguration sans changement d'IP/port.
 - L'options flow écrit dans `entry.data` (via `async_update_entry`) et non dans `entry.options` ; `async_create_entry(data={})` retourne des options vides. `binary_sensor.py` lit `filtration_entity` depuis `options` en priorité puis depuis `data` en fallback.
+
+## Cartographie des registres Modbus (Just Salt Pro — piscine.vboo.net:4196, unit_id=10)
+
+Découverts par reverse engineering le 2026-06-28. La doc constructeur n'est pas publique.
+Seul FC3 (read holding registers) est supporté ; FC1/FC2/FC4 renvoient exception code 1.
+
+**Zones accessibles :**
+- `0–49` : informations firmware (texte ASCII little-endian par mot, 2 octets/registre)
+- `259–268` : mesures temps réel
+- `512–527` : buffer LCD 16×2 (little-endian par mot : octet bas = premier caractère)
+- `4096–4270` : configuration et contrôle
+
+**Mesures (lecture seule) :**
+| Reg | Contenu | Scale | Unité |
+|-----|---------|-------|-------|
+| 259 | pH mesuré | 0.001 | pH |
+| 260 | Température | 0.1 | °C |
+| 261 | Taux de sel | 0.1 | g/L |
+| 262 | ORP mesuré | 1 | mV |
+| 264 | Alarme ORP min | — | mV |
+
+**Consignes (lecture/écriture) :**
+| Reg | Contenu | Scale écriture |
+|-----|---------|----------------|
+| 4207 | Consigne pH | `raw = round(val / 0.000390625)` |
+| 4235 | Consigne ORP | `raw = int(val)` (mV direct) |
+
+**Mode boost (lecture/écriture, validé en écriture) :**
+| Reg | Rôle | Valeurs |
+|-----|------|---------|
+| 4188 | Durée restante boost | 0 = off ; N = N minutes restantes (1440 = 24h). **Registre de commande principal.** |
+| 4182 | Flag boost actif | 0 = off ; 256 = on. Se remet à 0 automatiquement quand 4188 = 0. |
+
+Séquence d'activation : écrire `1440` dans 4188, puis `256` dans 4182.
+Séquence de désactivation : écrire `0` dans 4188 (4182 suit automatiquement).
+
+**LCD 512–527 (lecture seule, diagnostic) :**
+- Registres 512–519 : ligne 1 (ex. `ORP.   Boost 24h` ou `ORP       710 mV`)
+- Registres 520–527 : ligne 2 (ex. `pH           7.2`)
+- Décodage : `chr(val & 0xFF)` + `chr((val >> 8) & 0xFF)` pour chaque registre.
+
+**Registres config non exploités (valeurs stables observées, usage non confirmé) :**
+- 4104 = 7 (mode général — ne change pas avec le boost)
+- 4105 = 150
+- 4106 = 17000
+- 4110 = 50 (taux de production chlore %)
+- 4111 = taille du bassin en m³
+- 4197 = 450 (alarme pH min ?)
+- 4211 = 900, 4212 = 300 (alarmes ORP max/min ?)
 
 ## Ajouter un nouveau modèle
 

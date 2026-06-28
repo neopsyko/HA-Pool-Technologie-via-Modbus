@@ -1,7 +1,14 @@
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
+from homeassistant.const import UnitOfTime
 from homeassistant.helpers.restore_state import RestoreEntity
 from .const import DOMAIN
 from .models import MODELS
+
+_BOOST_DURATION_REG = 4188
+_LCD_LINE1_REG = 512
+_LCD_LINE2_REG = 520
+_LCD_REG_COUNT = 8  # 8 registres × 2 octets = 16 caractères par ligne
+
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     data = hass.data[DOMAIN][config_entry.entry_id]
@@ -18,7 +25,18 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             MODELS[model_key]["name"]
         ))
 
-    async_add_entities(sensors)
+    boost_duration = BoostDurationSensor(
+        hass, handler, config_entry.entry_id, MODELS[model_key]["name"]
+    )
+    lcd1 = LcdLineSensor(
+        hass, handler, config_entry.entry_id, MODELS[model_key]["name"],
+        _LCD_LINE1_REG, "lcd_ligne_1"
+    )
+    lcd2 = LcdLineSensor(
+        hass, handler, config_entry.entry_id, MODELS[model_key]["name"],
+        _LCD_LINE2_REG, "lcd_ligne_2"
+    )
+    async_add_entities(sensors + [boost_duration, lcd1, lcd2])
 
     controller = hass.data[DOMAIN][config_entry.entry_id]["controller"]
 
@@ -78,7 +96,7 @@ class PoolSensor(SensorEntity, RestoreEntity):
                 self._state = float(last_state.state)
             except ValueError:
                 pass
-                
+
     def update(self) -> bool:
         result = self._handler.read_register(self._config["address"])
         if result is not None:
@@ -87,3 +105,111 @@ class PoolSensor(SensorEntity, RestoreEntity):
             return True
         self._attr_available = False
         return False
+
+
+class BoostDurationSensor(SensorEntity):
+    def __init__(self, hass, handler, entry_id, model_label):
+        self._hass = hass
+        self._handler = handler
+        self._entry_id = entry_id
+        self._model_label = model_label
+        self._controller = None
+
+        self._attr_translation_key = "boost_duree_restante"
+        self._attr_has_entity_name = True
+        self._attr_icon = "mdi:timer-outline"
+        self._attr_unique_id = f"{entry_id}_boost_duree_restante"
+        self._attr_native_unit_of_measurement = UnitOfTime.MINUTES
+        self._attr_device_class = SensorDeviceClass.DURATION
+        self._attr_should_poll = False
+        self._attr_native_value = None
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._entry_id)},
+            "name": self._model_label,
+            "manufacturer": "Pool Technologie",
+            "model": self._model_label,
+        }
+
+    async def async_added_to_hass(self):
+        result = await self._hass.async_add_executor_job(
+            self._handler.read_register, _BOOST_DURATION_REG
+        )
+        if result is not None:
+            self._attr_native_value = result[0]
+            self._attr_available = True
+        else:
+            self._attr_available = False
+        self.async_write_ha_state()
+        self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
+        self._controller.add_poll_listener(self._async_poll_refresh)
+
+    async def async_will_remove_from_hass(self):
+        if self._controller:
+            self._controller.remove_poll_listener(self._async_poll_refresh)
+
+    async def _async_poll_refresh(self):
+        result = await self._hass.async_add_executor_job(
+            self._handler.read_register, _BOOST_DURATION_REG
+        )
+        if result is not None:
+            self._attr_native_value = result[0]
+            self._attr_available = True
+        else:
+            self._attr_available = False
+        self.async_write_ha_state()
+
+
+class LcdLineSensor(SensorEntity):
+    def __init__(self, hass, handler, entry_id, model_label, start_reg, translation_key):
+        self._hass = hass
+        self._handler = handler
+        self._entry_id = entry_id
+        self._model_label = model_label
+        self._start_reg = start_reg
+        self._controller = None
+
+        self._attr_translation_key = translation_key
+        self._attr_has_entity_name = True
+        self._attr_icon = "mdi:monitor-small"
+        self._attr_unique_id = f"{entry_id}_{translation_key}"
+        self._attr_should_poll = False
+        self._attr_native_value = None
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._entry_id)},
+            "name": self._model_label,
+            "manufacturer": "Pool Technologie",
+            "model": self._model_label,
+        }
+
+    def _decode_lcd(self, registers):
+        chars = []
+        for reg in registers:
+            chars.append(chr(reg & 0xFF))
+            chars.append(chr((reg >> 8) & 0xFF))
+        return "".join(chars).strip()
+
+    async def _read_lcd(self):
+        result = await self._hass.async_add_executor_job(
+            self._handler.read_register, self._start_reg, _LCD_REG_COUNT
+        )
+        if result is not None:
+            self._attr_native_value = self._decode_lcd(result)
+            self._attr_available = True
+        else:
+            self._attr_available = False
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        await self._read_lcd()
+        self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
+        self._controller.add_poll_listener(self._read_lcd)
+
+    async def async_will_remove_from_hass(self):
+        if self._controller:
+            self._controller.remove_poll_listener(self._read_lcd)

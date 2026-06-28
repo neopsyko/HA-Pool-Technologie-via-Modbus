@@ -66,6 +66,15 @@
       },
       "consigne_orp": {
         "name": "Consigne ORP"
+      },
+      "boost_duree_restante": {
+        "name": "Durée restante boost"
+      },
+      "lcd_ligne_1": {
+        "name": "LCD ligne 1"
+      },
+      "lcd_ligne_2": {
+        "name": "LCD ligne 2"
       }
     },
     "number": {

@@ -25,6 +25,10 @@ async def async_setup_entry(hass, entry):
 
     await controller.start()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # Premier poll en tâche de fond : ne bloque pas le setup si l'appareil est éteint
+    entry.async_create_background_task(
+        hass, controller._update_callback(None), "pool_technologie_first_poll"
+    )
     return True
 
 async def async_unload_entry(hass, entry):

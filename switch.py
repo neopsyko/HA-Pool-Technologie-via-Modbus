@@ -44,12 +44,6 @@ class BoostSwitch(SwitchEntity):
         }
 
     async def async_added_to_hass(self):
-        result = await self._hass.async_add_executor_job(
-            self._handler.read_register, _BOOST_DURATION_REG
-        )
-        if result is not None:
-            self._attr_is_on = result[0] > 0
-            self.async_write_ha_state()
         self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
         self._controller.add_poll_listener(self._async_poll_refresh)
 

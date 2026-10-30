@@ -58,12 +58,6 @@ class ORPSetpointEntity(NumberEntity):
         }
 
     async def async_added_to_hass(self):
-        result = await self._hass.async_add_executor_job(self._handler.read_register, self._address)
-        if result is not None:
-            v = int(result[0])
-            if self.native_min_value <= v <= self.native_max_value:
-                self._attr_native_value = v
-                self.async_write_ha_state()
         self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
         self._controller.add_poll_listener(self._async_poll_refresh)
 
@@ -130,12 +124,6 @@ class PHSetpointEntity(NumberEntity):
         }
 
     async def async_added_to_hass(self):
-        result = await self._hass.async_add_executor_job(self._handler.read_register, self._address)
-        if result is not None:
-            v = round(result[0] * self._scale, 2)
-            if self.native_min_value <= v <= self.native_max_value:
-                self._attr_native_value = v
-                self.async_write_ha_state()
         self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
         self._controller.add_poll_listener(self._async_poll_refresh)
 

@@ -7,7 +7,7 @@ class ModbusHandler:
         self.port = port
         self.unit_id = unit_id
         self._lock = threading.Lock()
-        self.client = ModbusTcpClient(host=self.host, port=self.port, timeout=timeout)
+        self.client = ModbusTcpClient(host=self.host, port=self.port, timeout=timeout, retries=0)
 
     def read_register(self, address, count=1):
         with self._lock:

@@ -134,15 +134,6 @@ class BoostDurationSensor(SensorEntity):
         }
 
     async def async_added_to_hass(self):
-        result = await self._hass.async_add_executor_job(
-            self._handler.read_register, _BOOST_DURATION_REG
-        )
-        if result is not None:
-            self._attr_native_value = result[0]
-            self._attr_available = True
-        else:
-            self._attr_available = False
-        self.async_write_ha_state()
         self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
         self._controller.add_poll_listener(self._async_poll_refresh)
 
@@ -206,7 +197,6 @@ class LcdLineSensor(SensorEntity):
         self.async_write_ha_state()
 
     async def async_added_to_hass(self):
-        await self._read_lcd()
         self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
         self._controller.add_poll_listener(self._read_lcd)
 

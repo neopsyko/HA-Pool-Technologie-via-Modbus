@@ -1,7 +1,7 @@
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.const import UnitOfTime
 from homeassistant.helpers.restore_state import RestoreEntity
-from .const import DOMAIN
+from .const import DOMAIN, STANDBY_REG
 from .models import MODELS
 
 _BOOST_DURATION_REG = 4188
@@ -44,10 +44,17 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         if controller.should_skip_poll():
             return
         any_success = False
+        standby = await hass.async_add_executor_job(handler.read_register, STANDBY_REG)
+        controller.standby = bool(standby[0] & 0xFF) if standby is not None else None
+        if standby is not None:
+            any_success = True
         for sensor in sensors:
             ok = await hass.async_add_executor_job(sensor.update)
             if ok:
                 any_success = True
+                # En veille, seule la température est fiable : pH/ORP/sel indisponibles
+                if controller.standby and sensor.unreliable_in_standby:
+                    sensor._attr_available = False
             sensor.async_write_ha_state()
         if any_success:
             controller.notify_modbus_success()
@@ -75,6 +82,10 @@ class PoolSensor(SensorEntity, RestoreEntity):
         self._attr_should_poll = False
 
         self._attr_device_class = config.get("device_class")
+
+    @property
+    def unreliable_in_standby(self) -> bool:
+        return self._config.get("unreliable_in_standby", False)
 
     @property
     def state(self):

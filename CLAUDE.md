@@ -30,7 +30,7 @@ L'intégration suit la structure standard des custom components HA :
 - **`__init__.py`** — setup de l'entrée : instancie `ModbusHandler` et `PoolController`, les stocke dans `hass.data[DOMAIN][entry_id]`, délègue le setup aux trois plateformes. Lance ensuite un premier poll en tâche de fond (`entry.async_create_background_task`) pour remplir les valeurs sans bloquer le démarrage. `async_unload_entry` annule le timer uniquement si unload réussit.
 - **`sensor.py`** — capteurs en lecture seule. `PoolSensor.update()` est synchrone, exécuté via `async_add_executor_job`, retourne `bool` et gère `_attr_available`. La valeur brute du registre est multipliée par `scale` et arrondie à `precision`. Le callback `update_sensors` est injecté dans `controller._update_callback` après création des entités.
 - **`number.py`** — consignes modifiables pour le pH (registre 4207, échelle `0.000390625`) et l'ORP (registre 4235, échelle 1 mV). Aucune lecture Modbus dans `async_added_to_hass` (bloquerait le setup si l'appareil est éteint) : valeurs remplies par le premier poll, avec validation min/max. Chemin d'écriture : `async_set_native_value` → `async_add_executor_job(handler.write_register)` → `async_write_ha_state()`.
-- **`binary_sensor.py`** — `ModbusStatusSensor` reflète `controller.modbus_ok`. S'enregistre comme observateur via `controller.add_state_listener` pour se mettre à jour en temps réel. Vérifie optionnellement l'état d'une entité de filtration avant de reporter l'état OK. Le listener est retiré proprement dans `async_will_remove_from_hass`.
+- **`binary_sensor.py`** — `StandbySensor` (« Veille ») lit le reg 4122 via `controller.add_poll_listener`. `ModbusStatusSensor` reflète `controller.modbus_ok`. S'enregistre comme observateur via `controller.add_state_listener` pour se mettre à jour en temps réel. Vérifie optionnellement l'état d'une entité de filtration avant de reporter l'état OK. Le listener est retiré proprement dans `async_will_remove_from_hass`.
 - **`config_flow.py`** — trois flux : `async_step_user` (création, avec déduplication par `unique_id = host:port:unit_id`), `async_step_reconfigure` (modification d'une entrée existante), `PoolTechnologieOptionsFlow.async_step_init` (options, même formulaire que reconfigure).
 - **`switch.py`** — `BoostSwitch` pour le mode boost. Activation en deux temps : écriture de la durée (reg 4188 = 1440 min = 24h) puis du flag (reg 4182 = 256). Désactivation : écriture 0 dans 4188 (4182 se remet à 0 automatiquement côté device). Se rafraîchit via `controller.add_poll_listener` comme les entités `number`.
 - **`translations/fr.json`** — chaînes UI en français pour le flux de configuration et les noms d'entités.
@@ -80,6 +80,17 @@ Seul FC3 (read holding registers) est supporté ; FC1/FC2/FC4 renvoient exceptio
 
 Séquence d'activation : écrire `1440` dans 4188, puis `256` dans 4182.
 Séquence de désactivation : écrire `0` dans 4188 (4182 suit automatiquement).
+
+**Mode veille (lecture seule, découvert le 2026-11-02 par diff veille ↔ marche, reproduit 2 fois) :**
+| Reg | Veille | Marche | Usage |
+|-----|--------|--------|-------|
+| 4122 | 257 (`0x0101`) | 256 (`0x0100`) | **Indicateur utilisé** : octet bas = 1 → veille (`binary_sensor` « Veille ») |
+| 4232 | 16448 (`0x4040`) | 64 (`0x0040`) | octet haut `0x40` → veille (redondant) |
+| 4209 | 34 (`0x22`) | 2 (`0x02`) | code d'état, exposé en attribut `code_etat`. Hypothèse : bit `0x20` = veille, bit `0x02` = hivernage (non vérifié) |
+
+En veille, l'écran LCD est vide et seule la température (260) est fiable (confirmé par l'utilisateur) : pH, sel et ORP portent `"unreliable_in_standby": True` dans `models.py` et passent en indisponible. L'état veille est lu une fois au début de chaque poll (`sensor.update_sensors`) et stocké dans `controller.standby` (`None` si la lecture échoue).
+
+**Hivernage (non identifié) :** l'appareil était en hivernage pendant les tests (LCD `Info / Hivernage`), sans pouvoir le désactiver. À faire au printemps : diff hivernage ↔ normal. Pistes : bit `0x02` de 4209 ; 4245 décroît d'environ 1/min (≈ 1958 le 2026-11-02 à 14h30), compte à rebours peut-être lié à l'hivernage. 4096/4097 (uint32) change à chaque transition veille/marche, sens inconnu.
 
 **LCD 512–527 (lecture seule, diagnostic) :**
 - Registres 512–519 : ligne 1 (ex. `ORP.   Boost 24h` ou `ORP       710 mV`)

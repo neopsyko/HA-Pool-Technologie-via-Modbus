@@ -13,6 +13,7 @@ class PoolController:
         self._remove_listener = None
         self._handler = handler
         self.modbus_ok = False
+        self.standby = None  # None = inconnu, True = en veille
         self._modbus_fail_count = 0
         self._modbus_fail_threshold = 5
         self._probe_counter = 0

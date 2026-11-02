@@ -88,6 +88,9 @@
     "binary_sensor": {
       "modbus_status": {
         "name": "État de la communication Modbus"
+      },
+      "veille": {
+        "name": "Veille"
       }
     },
     "switch": {

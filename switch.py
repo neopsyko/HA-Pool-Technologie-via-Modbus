@@ -3,6 +3,7 @@ from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN
 from .models import MODELS
+from .controller import ModbusAvailabilityMixin
 
 _BOOST_DURATION_REG = 4188
 _BOOST_FLAG_REG = 4182
@@ -19,7 +20,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     ])
 
 
-class BoostSwitch(SwitchEntity):
+class BoostSwitch(ModbusAvailabilityMixin, SwitchEntity):
     def __init__(self, hass, handler, entry_id, model_label):
         self._hass = hass
         self._handler = handler
@@ -44,7 +45,7 @@ class BoostSwitch(SwitchEntity):
         }
 
     async def async_added_to_hass(self):
-        self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
+        self._track_modbus_state(self._hass.data[DOMAIN][self._entry_id]["controller"])
         self._controller.add_poll_listener(self._async_poll_refresh)
 
     async def async_will_remove_from_hass(self):

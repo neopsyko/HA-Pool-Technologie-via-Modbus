@@ -5,6 +5,7 @@ from homeassistant.exceptions import HomeAssistantError
 
 from .models import MODELS
 from .const import DOMAIN
+from .controller import ModbusAvailabilityMixin
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     controller = hass.data[DOMAIN][config_entry.entry_id]["controller"]
@@ -17,7 +18,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     ]
     async_add_entities(entities)
 
-class ORPSetpointEntity(NumberEntity):
+class ORPSetpointEntity(ModbusAvailabilityMixin, NumberEntity):
     def __init__(self, hass, handler, entry_id, model_label):
         self._hass = hass
         self._handler = handler
@@ -58,7 +59,7 @@ class ORPSetpointEntity(NumberEntity):
         }
 
     async def async_added_to_hass(self):
-        self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
+        self._track_modbus_state(self._hass.data[DOMAIN][self._entry_id]["controller"])
         self._controller.add_poll_listener(self._async_poll_refresh)
 
     async def async_will_remove_from_hass(self):
@@ -82,7 +83,7 @@ class ORPSetpointEntity(NumberEntity):
         self._attr_native_value = int(value)
         self.async_write_ha_state()
 
-class PHSetpointEntity(NumberEntity):
+class PHSetpointEntity(ModbusAvailabilityMixin, NumberEntity):
     def __init__(self, hass, handler, entry_id, model_label):
         self._hass = hass
         self._handler = handler
@@ -124,7 +125,7 @@ class PHSetpointEntity(NumberEntity):
         }
 
     async def async_added_to_hass(self):
-        self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
+        self._track_modbus_state(self._hass.data[DOMAIN][self._entry_id]["controller"])
         self._controller.add_poll_listener(self._async_poll_refresh)
 
     async def async_will_remove_from_hass(self):

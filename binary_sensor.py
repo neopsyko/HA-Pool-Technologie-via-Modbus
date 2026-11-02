@@ -2,6 +2,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.const import EntityCategory
 from .const import DOMAIN
 from .models import MODELS
+from .controller import ModbusAvailabilityMixin
 
 # Mode veille — découvert par reverse engineering le 2026-11-02 (Just Salt Pro).
 # 4122 (const.STANDBY_REG) : octet bas = 1 en veille, lu dans sensor.update_sensors.
@@ -78,7 +79,7 @@ class ModbusStatusSensor(BinarySensorEntity):
 
 
 
-class StandbySensor(BinarySensorEntity):
+class StandbySensor(ModbusAvailabilityMixin, BinarySensorEntity):
     """Indique si l'électrolyseur est en veille (on = en veille)."""
 
     def __init__(self, hass, controller, entry_id, model_label):
@@ -109,6 +110,7 @@ class StandbySensor(BinarySensorEntity):
         }
 
     async def async_added_to_hass(self):
+        self._track_modbus_state(self._controller)
         self._controller.add_poll_listener(self._async_poll_refresh)
 
     async def async_will_remove_from_hass(self):

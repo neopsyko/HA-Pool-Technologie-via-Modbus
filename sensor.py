@@ -3,6 +3,7 @@ from homeassistant.const import UnitOfTime
 from homeassistant.helpers.restore_state import RestoreEntity
 from .const import DOMAIN, STANDBY_REG
 from .models import MODELS
+from .controller import ModbusAvailabilityMixin
 
 _BOOST_DURATION_REG = 4188
 _LCD_LINE1_REG = 512
@@ -118,7 +119,7 @@ class PoolSensor(SensorEntity, RestoreEntity):
         return False
 
 
-class BoostDurationSensor(SensorEntity):
+class BoostDurationSensor(ModbusAvailabilityMixin, SensorEntity):
     def __init__(self, hass, handler, entry_id, model_label):
         self._hass = hass
         self._handler = handler
@@ -145,7 +146,7 @@ class BoostDurationSensor(SensorEntity):
         }
 
     async def async_added_to_hass(self):
-        self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
+        self._track_modbus_state(self._hass.data[DOMAIN][self._entry_id]["controller"])
         self._controller.add_poll_listener(self._async_poll_refresh)
 
     async def async_will_remove_from_hass(self):
@@ -164,7 +165,7 @@ class BoostDurationSensor(SensorEntity):
         self.async_write_ha_state()
 
 
-class LcdLineSensor(SensorEntity):
+class LcdLineSensor(ModbusAvailabilityMixin, SensorEntity):
     def __init__(self, hass, handler, entry_id, model_label, start_reg, translation_key):
         self._hass = hass
         self._handler = handler
@@ -208,7 +209,7 @@ class LcdLineSensor(SensorEntity):
         self.async_write_ha_state()
 
     async def async_added_to_hass(self):
-        self._controller = self._hass.data[DOMAIN][self._entry_id]["controller"]
+        self._track_modbus_state(self._hass.data[DOMAIN][self._entry_id]["controller"])
         self._controller.add_poll_listener(self._read_lcd)
 
     async def async_will_remove_from_hass(self):

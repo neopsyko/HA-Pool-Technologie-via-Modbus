@@ -98,3 +98,28 @@ class PoolController:
             _PROBE_INTERVAL,
         )
         return True
+
+
+class ModbusAvailabilityMixin:
+    """Rend une entité indisponible tant que controller.modbus_ok est faux.
+
+    À placer avant la classe d'entité HA dans l'héritage. Appeler
+    `_track_modbus_state(controller)` dans `async_added_to_hass` : aucune
+    lecture Modbus, uniquement un abonnement aux transitions True↔False
+    (désabonnement automatique à la suppression de l'entité).
+    """
+
+    _controller = None
+
+    @property
+    def available(self):
+        return bool(self._controller and self._controller.modbus_ok) and super().available
+
+    def _track_modbus_state(self, controller):
+        self._controller = controller
+
+        def _on_modbus_change():
+            self.async_write_ha_state()
+
+        controller.add_state_listener(_on_modbus_change)
+        self.async_on_remove(lambda: controller.remove_state_listener(_on_modbus_change))
